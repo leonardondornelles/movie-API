@@ -58,7 +58,7 @@ app.post('/movies', (req, res) => {
     const newMovie = req.body;
     
     movies.push(newMovie);
-
+    // fuasfjsaifisaugiigu
     res.status(201).json(newMovie);
 })
 
