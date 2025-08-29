@@ -81,25 +81,60 @@ app.get('/movies/:id/reviews/:reviewId', (req, res) => {
 
 // POSTS --------------
 app.post('/movies', (req, res) => {
-    const newMovie = req.body;
+    const todosOsIds = movies.map(filme => filme.id);
+    const maiorId = Math.max(...todosOsIds);
     
+    let newMovieId;
+
+    if(movies.length < 1){
+      newMovieId.id = 1;
+    }else{
+      newMovieId.id = maiorId + 1;
+    }
+    
+    const newMovie = {
+      id: newMovieId,
+      title: newMovieData.title,
+      director: newMovieData.director,
+      year: newMovieData.year
+    };
+
     movies.push(newMovie);
-
     res.status(201).json(newMovie);
-})
+});
 
-app.post('/movies:id/reviews', (req, res) => {
-    const id = req.params.id;
-    const newReview = req.body;
-    const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+app.post('/movies/:id/reviews', (req, res) => {
+  const id = req.params.id;
+  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+    
+  const todosOsIds = reviews.map(review => review.id);
+  const maiorId = Math.max(...todosOsIds);
+    
 
     if(!filmeEncontrado){
-      res.status(404).send("Filme não encontrado");
-    }else{
-        reviews.push(newReview);
+      return res.status(404).send("Filme não encontrado");
     }
+      
+    let newReviewId;
+    if (reviews.length === 0) {
+        newReviewId = 1;
+    } else {
+        const todosOsIds = reviews.map(review => review.id);
+        const maiorId = Math.max(...todosOsIds);
+        newReviewId = maiorId + 1;
+    }
+
+    const newReview = {
+        id: newReviewId,
+        movieId: movieId,
+        text: newReviewData.text,
+        rating: newReviewData.rating
+    };
+
+    reviews.push(newReview);
     res.status(201).json(newReview);
-})
+});
+
 
 // PUT ------------------
 
@@ -121,7 +156,6 @@ app.put('/movies/:id', (req, res) =>{
 app.put('/movies/:id/reviews/:reviewId', (req, res) => {
   const id = req.params.id;
   const reviewId = req.params.reviewId;
-  const newReview = req.body;
 
   const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
 
@@ -129,7 +163,7 @@ app.put('/movies/:id/reviews/:reviewId', (req, res) => {
       return res.status(404).send("Filme não encontrado");
     }
   
-    const reviewEncontrada = reviews.find(review => review.id);
+    const reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
 
   if(!reviewEncontrada){
     return res.status(404).send("Review não encontrada");
@@ -137,7 +171,7 @@ app.put('/movies/:id/reviews/:reviewId', (req, res) => {
 
   if(filmeEncontrado.id !== reviewEncontrada.movieId)
   {
-    res.status(400).send("Essa review não pertence a este filme");
+    return res.status(400).send("Essa review não pertence a este filme");
   }else{
     reviewEncontrada.text = req.body.text;
     reviewEncontrada.rating = req.body.rating;
@@ -160,6 +194,32 @@ app.delete('/movies/:id', (req, res) =>{
     res.status(204).end();
   }
 });
+
+app.delete('/movies/:id/reviews/:reviewId', (req, res) =>{
+  const movieId = req.params.id;
+  const reviewId = req.params.reviewId;
+
+  const filmeEncontrado = movies.find(filme => filme.id === parseInt(movieId));
+
+  if(!filmeEncontrado){
+    return res.status(404).send("Filme não encontrado");
+  }
+
+  const indiceDaReview = reviews.findIndex(r => r.id === parseInt(reviewId));
+
+  if(indiceDaReview === -1){
+    return res.status(404).send("Review não encontrada");
+  }
+
+  if(filmeEncontrado.id !== reviews.at(indiceDaReview).movieId)
+  {
+    return res.status(400).send("Essa review não pertence a este filme");
+  }else{
+    reviews.splice(indiceDaReview, 1);
+    res.status(204).end();
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`http://localhost:${port}`);
