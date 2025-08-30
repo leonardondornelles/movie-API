@@ -1,4 +1,3 @@
-
 const express = require('express');
 
 const { movies, reviews } = require('./database.js');
@@ -16,8 +15,8 @@ const port = 3000;
 // Middleware Filmes
 
 function middlewareFilmeEncontrado(req, res, next){
-  id = req.params.id;
-  filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+  const id = req.params.id;
+  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
 
   if(filmeEncontrado){
     req.filme = filmeEncontrado;
@@ -31,8 +30,8 @@ function middlewareFilmeEncontrado(req, res, next){
 // Middleware Reviews 
 
 function middlewareReviewEncontrada(req, res, next){
-  reviewId = req.params.reviewId;
-  reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
+  const reviewId = req.params.reviewId;
+  const reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
 
   if(reviewEncontrada){
     req.review = reviewEncontrada;
@@ -60,48 +59,26 @@ app.get('/movies', (req, res) => {
 });
 
 app.get('/movies/:id', middlewareFilmeEncontrado, (req, res) => {
-  res.status(202).json(req.filme);
+  res.status(200).json(req.filme);
 });
 
-app.get('/movies/:id/reviews', (req, res) => {
-  const id = req.params.id;
-  const reviewEncontrada = reviews.filter(review => review.movieId === parseInt(id));
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+app.get('/movies/:id/reviews', middlewareFilmeEncontrado, (req, res) => {
+  const reviewEncontrada = reviews.filter(review => review.movieId === req.filme.id);
 
-  if(!filmeEncontrado){
-    res.status(404).send("Filme não encontrado");
-  }else{
-    if(reviewEncontrada.length === 0){
-      res.status(200).send("Review não encontrado");
-    }else{
-      res.status(200).json(reviewEncontrada);
-    }
-  }
-});
-
-app.get('/movies/:id/reviews/:reviewId', (req, res) => {
-  const movieId = req.params.id;
-  const reviewId = req.params.reviewId;
-
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(movieId));
-
-  if(!filmeEncontrado){
-    return res.status(404).send("Filme não encontrado");
-  }
-
-  const reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
-
-  if(!reviewEncontrada){
-    return res.status(404).send("Review não encontrada");
-  }
-
-  if(filmeEncontrado.id !== reviewEncontrada.movieId)
-  {
-    res.status(400).send("Essa review não pertence a este filme");
+  if(reviewEncontrada.length === 0){
+    res.status(200).send("Nenhuma review encontrada para este filme");
   }else{
     res.status(200).json(reviewEncontrada);
   }
-})
+});
+
+app.get('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, (req, res) => {
+  if(req.filme.id !== req.idFilmeAvaliado) {
+    res.status(400).send("Essa review não pertence a este filme");
+  } else {
+    res.status(200).json(req.review);
+  }
+});
 
 // POSTS --------------
 app.post('/movies', (req, res) => {
@@ -123,26 +100,17 @@ app.post('/movies', (req, res) => {
     res.status(201).json(newMovie);
 });
 
-app.post('/movies/:id/reviews', (req, res) => {
-  const id = req.params.id;
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
-    
-  const todosOsIds = reviews.map(review => review.id);
-  const maiorId = Math.max(...todosOsIds);
-    
-
-    if(!filmeEncontrado){
-      return res.status(404).send("Filme não encontrado");
-    }
-      
+app.post('/movies/:id/reviews', middlewareFilmeEncontrado, (req, res) => {
     let newReviewId = 1;
     if (reviews.length > 0) {
+        const todosOsIds = reviews.map(review => review.id);
+        const maiorId = Math.max(...todosOsIds);
         newReviewId = maiorId + 1;
     }
 
     const newReview = {
         id: newReviewId,
-        movieId: id,
+        movieId: req.filme.id,
         text: req.body.text,
         rating: req.body.rating
     };
@@ -154,79 +122,40 @@ app.post('/movies/:id/reviews', (req, res) => {
 
 // PUT ------------------
 
-app.put('/movies/:id', (req, res) =>{
-    const id = req.params.id;
-    const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+app.put('/movies/:id', middlewareFilmeEncontrado, (req, res) =>{
+    req.filme.title = req.body.title;
+    req.filme.director = req.body.director;
+    req.filme.year = req.body.year;
 
-    if(!filmeEncontrado){
-      res.status(404).send("Filme não encontrado");
-    }else{
-      filmeEncontrado.title = req.body.title;
-      filmeEncontrado.director = req.body.director;
-      filmeEncontrado.year = req.body.year;
-
-      res.status(200).json(filmeEncontrado);
-    }
+    res.status(200).json(req.filme);
 });
 
-app.put('/movies/:id/reviews/:reviewId', (req, res) => {
-  const id = req.params.id;
-  const reviewId = req.params.reviewId;
+app.put('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, (req, res) => {
 
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
-
-    if(!filmeEncontrado){
-      return res.status(404).send("Filme não encontrado");
-    }
-  
-    const reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
-
-  if(!reviewEncontrada){
-    return res.status(404).send("Review não encontrada");
-  }
-
-  if(filmeEncontrado.id !== reviewEncontrada.movieId)
+  if(req.filme.id !== req.idFilmeAvaliado)
   {
     return res.status(400).send("Essa review não pertence a este filme");
   }else{
-    reviewEncontrada.text = req.body.text;
-    reviewEncontrada.rating = req.body.rating;
+    req.review.text = req.body.text;
+    req.review.rating = req.body.rating;
 
-    res.status(200).json(reviewEncontrada);
+    res.status(200).json(req.review);
   }
 });
 
 // DELETE --------------------
 
 app.delete('/movies/:id', middlewareFilmeEncontrado, (req, res) =>{
-  const indiceFilme = req.indiceFilme;
-  
-  movies.splice(indiceFilme, 1);
-
+  movies.splice(req.indiceFilme, 1);
   res.status(204).end();
 });
 
-app.delete('/movies/:id/reviews/:reviewId', (req, res) =>{
-  const movieId = req.params.id;
-  const reviewId = req.params.reviewId;
-
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(movieId));
-
-  if(!filmeEncontrado){
-    return res.status(404).send("Filme não encontrado");
-  }
-
-  const indiceDaReview = reviews.findIndex(r => r.id === parseInt(reviewId));
-
-  if(indiceDaReview === -1){
-    return res.status(404).send("Review não encontrada");
-  }
-
-  if(filmeEncontrado.id !== reviews.at(indiceDaReview).movieId)
+app.delete('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, (req, res) =>{
+  if(req.filme.id !== req.idFilmeAvaliado)
   {
     return res.status(400).send("Essa review não pertence a este filme");
   }else{
-    reviews.splice(indiceDaReview, 1);
+    reviews.splice(req.indiceReview, 1);
     res.status(204).end();
   }
 });
