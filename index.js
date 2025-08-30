@@ -11,7 +11,38 @@ app.use(express.json());
 // Define a porta em que o servidor vai rodar
 const port = 3000;
 
+// MIDDLEWARES --------------------
 
+// Middleware Filmes
+
+function middlewareFilmeEncontrado(req, res, next){
+  id = req.params.id;
+  filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
+
+  if(filmeEncontrado){
+    req.filme = filmeEncontrado;
+    req.indiceFilme = movies.findIndex(filme => filme.id === parseInt(id));
+    next();
+  }else{
+    res.status(404).send("Filme não encontrado");
+  }
+};
+
+// Middleware Reviews 
+
+function middlewareReviewEncontrada(req, res, next){
+  reviewId = req.params.reviewId;
+  reviewEncontrada = reviews.find(review => review.id === parseInt(reviewId));
+
+  if(reviewEncontrada){
+    req.review = reviewEncontrada;
+    req.indiceReview = reviews.findIndex(review => review.id === parseInt(reviewId));
+    req.idFilmeAvaliado = reviewEncontrada.movieId;
+    next();
+  }else{
+    res.status(404).send("Review Não Encontrada")
+  }
+};
 
 // GETS ----------------------
 
@@ -28,15 +59,8 @@ app.get('/movies', (req, res) => {
   res.json(movies);
 });
 
-app.get('/movies/:id', (req, res) => {
-  const id = req.params.id;
-  const filmeEncontrado = movies.find(filme => filme.id === parseInt(id));
-
-  if(!filmeEncontrado){
-    res.status(404).send("Filme não encontrado");
-  }else{
-    res.status(200).json(filmeEncontrado);
-  }
+app.get('/movies/:id', middlewareFilmeEncontrado, (req, res) => {
+  res.status(202).json(req.filme);
 });
 
 app.get('/movies/:id/reviews', (req, res) => {
@@ -81,25 +105,21 @@ app.get('/movies/:id/reviews/:reviewId', (req, res) => {
 
 // POSTS --------------
 app.post('/movies', (req, res) => {
-    const todosOsIds = movies.map(filme => filme.id);
-    const maiorId = Math.max(...todosOsIds);
-    
-    let newMovieId;
-
-    if(movies.length < 1){
-      newMovieId.id = 1;
-    }else{
-      newMovieId.id = maiorId + 1;
+    let newId = 1;
+    if (movies.length > 0) {
+        const maxId = Math.max(...movies.map(filme => filme.id));
+        newId = maxId + 1;
     }
     
     const newMovie = {
-      id: newMovieId,
-      title: newMovieData.title,
-      director: newMovieData.director,
-      year: newMovieData.year
+        id: newId,
+        title: req.body.title,
+        director: req.body.director,
+        year: req.body.year
     };
 
     movies.push(newMovie);
+
     res.status(201).json(newMovie);
 });
 
@@ -115,20 +135,16 @@ app.post('/movies/:id/reviews', (req, res) => {
       return res.status(404).send("Filme não encontrado");
     }
       
-    let newReviewId;
-    if (reviews.length === 0) {
-        newReviewId = 1;
-    } else {
-        const todosOsIds = reviews.map(review => review.id);
-        const maiorId = Math.max(...todosOsIds);
+    let newReviewId = 1;
+    if (reviews.length > 0) {
         newReviewId = maiorId + 1;
     }
 
     const newReview = {
         id: newReviewId,
-        movieId: movieId,
-        text: newReviewData.text,
-        rating: newReviewData.rating
+        movieId: id,
+        text: req.body.text,
+        rating: req.body.rating
     };
 
     reviews.push(newReview);
@@ -182,17 +198,12 @@ app.put('/movies/:id/reviews/:reviewId', (req, res) => {
 
 // DELETE --------------------
 
-app.delete('/movies/:id', (req, res) =>{
-  const id = req.params.id;
-  const indiceFilme = movies.findIndex(filme => filme.id === parseInt(id));
+app.delete('/movies/:id', middlewareFilmeEncontrado, (req, res) =>{
+  const indiceFilme = req.indiceFilme;
+  
+  movies.splice(indiceFilme, 1);
 
-  if(indiceFilme == -1){
-    res.status(404).send("Filme não encontrado");
-  }else{
-    movies.splice(indiceFilme, 1);
-
-    res.status(204).end();
-  }
+  res.status(204).end();
 });
 
 app.delete('/movies/:id/reviews/:reviewId', (req, res) =>{
