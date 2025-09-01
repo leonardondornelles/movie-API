@@ -1,0 +1,200 @@
+/* Importa a fonte do Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+/* Variáveis de Cor (para fácil customização) */
+:root {
+    --primary-color: #e50914; /* Vermelho Netflix */
+    --background-color: #141414; /* Preto Netflix */
+    --card-background: #222;
+    --text-color: #f1f1f1;
+    --text-color-secondary: #aaa;
+    --border-color: #333;
+}
+
+/* Estilos Gerais */
+body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+header {
+    background-color: var(--background-color);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+main {
+    padding: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    display: inline-block;
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #f6121d;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Grid de Filmes */
+#movies-grid {
+    display: grid;
+    /* Cria colunas responsivas: preenche com o máximo de colunas de 220px que couberem */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Card de Filme */
+.movie-card {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+}
+
+.movie-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+}
+
+.movie-card img {
+    width: 100%;
+    height: 330px; /* Altura fixa para o poster */
+    object-fit: cover;
+    display: block;
+}
+
+.movie-card-info {
+    padding: 1rem;
+}
+
+.movie-card-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Adiciona "..." se o título for muito longo */
+}
+
+.movie-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+.movie-actions button {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+}
+
+.delete-btn {
+    background-color: #555;
+}
+.delete-btn:hover {
+    background-color: #777;
+}
+
+/* Detalhes do Filme */
+#movie-details-container {
+    background-color: var(--card-background);
+    padding: 2rem;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2rem;
+}
+
+.details-poster img {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.details-info h2 {
+    margin-top: 0;
+    font-size: 2.5rem;
+}
+
+.details-info p {
+    font-size: 1.1rem;
+    color: var(--text-color-secondary);
+}
+
+.review-item {
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 0;
+}
+
+/* Modal (Formulários) */
+.modal {
+    position: fixed;
+    z-index: 100;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background-color: #2a2a2a;
+    margin: 10% auto;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.close-btn {
+    color: #aaa;
+    position: absolute; top: 15px; right: 25px;
+    font-size: 28px; font-weight: bold;
+    cursor: pointer;
+}
+
+form label {
+    margin-top: 1rem; margin-bottom: 0.5rem;
+    display: block;
+}
+
+form input, form textarea {
+    width: 100%;
+    padding: 10px;
+    background-color: #444;
+    border: 1px solid #555;
+    border-radius: 5px;
+    font-size: 1rem;
+    color: var(--text-color);
+    box-sizing: border-box;
+}
