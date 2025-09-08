@@ -1,95 +1,55 @@
 const express = require('express');
-const mysql = require('mysql2');
-
 const cors = require('cors');
+let { movies, reviews } = require('./database.js');
 
 const app = express();
-
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'lecolecoPetelecoFernando1411?',
-    database: 'api_filmes'
-}).promise();
-
+app.use(express.static('.')); // Serve static files from the root directory
 app.use(express.json());
 app.use(cors());
 
-// Define a porta em que o servidor vai rodar
 const port = 3000;
 
-// MIDDLEWARES --------------------
-
-// Middleware Filmes
-async function middlewareFilmeEncontrado(req, res, next) {
-    try {
-        const { id } = req.params;
-        const [rows] = await pool.query('SELECT * FROM movies WHERE id = ?', [id]);
-        if (rows.length > 0) {
-            req.filme = rows[0];
-            next();
-        } else {
-            res.status(404).send('Filme não encontrado');
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro no servidor ao buscar filme');
+// MIDDLEWARES
+function middlewareFilmeEncontrado(req, res, next) {
+    const { id } = req.params;
+    const movie = movies.find(m => m.id == id);
+    if (movie) {
+        req.filme = movie;
+        return next();
     }
-};
+    return res.status(404).send('Filme não encontrado');
+}
 
-// Middleware Reviews 
-async function middlewareReviewEncontrada(req, res, next) {
-    try {
-        const { reviewId } = req.params;
-        const [rows] = await pool.query('SELECT * FROM reviews WHERE id = ?', [reviewId]);
-        if (rows.length > 0) {
-            req.review = rows[0];
-            next();
-        } else {
-            res.status(404).send("Review não encontrada");
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro no servidor ao buscar a review.');
+function middlewareReviewEncontrada(req, res, next) {
+    const { reviewId } = req.params;
+    const review = reviews.find(r => r.id == reviewId);
+    if (review) {
+        req.review = review;
+        return next();
     }
-};
+    return res.status(404).send("Review não encontrada");
+}
 
-// GETS ----------------------
-
-// Rota principal - Apenas uma mensagem de boas-vindas
+// GETS
 app.get('/', (req, res) => {
     res.send('Bem-vindo à API de Filmes e Reviews!');
 });
 
-// MOVIES ID --------------------------
-
-// Nova rota GET para '/movies' em geral
-app.get('/movies', async (req, res) => {
-    try {
-        const [rows] = await pool.query('SELECT * FROM movies');
-        res.json(rows);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao buscar os filmes');
-    }
+app.get('/movies', (req, res) => {
+    res.json(movies);
 });
 
 app.get('/movies/:id', middlewareFilmeEncontrado, (req, res) => {
     res.status(200).json(req.filme);
 });
 
-app.get('/movies/:id/reviews', middlewareFilmeEncontrado, async (req, res) => {
-    try {
-        const movieId = req.filme.id;
-        const [rows] = await pool.query('SELECT * FROM reviews WHERE movieId = ?', [movieId]);
-        if (rows.length === 0) {
-            res.status(200).send("Nenhuma review encontrada para este filme");
-        } else {
-            res.status(200).json(rows);
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao buscar as reviews');
+app.get('/movies/:id/reviews', middlewareFilmeEncontrado, (req, res) => {
+    const movieReviews = reviews.filter(r => r.movieId == req.filme.id);
+    if (movieReviews.length === 0) {
+        // Return empty array to be consistent, instead of a string message
+        res.status(200).json([]);
+    } else {
+        res.status(200).json(movieReviews);
     }
 });
 
@@ -100,100 +60,57 @@ app.get('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareRe
     res.status(200).json(req.review);
 });
 
-// POSTS --------------
-app.post('/movies', async (req, res) => {
-    try {
-        const { title, director, year } = req.body;
-        const [result] = await pool.query(
-            'INSERT INTO movies (title, director, year) VALUES (?, ?, ?)',
-            [title, director, year]
-        );
-        const newMovie = { id: result.insertId, title, director, year };
-        res.status(201).json(newMovie);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao criar o filme.');
-    }
+// POSTS
+app.post('/movies', (req, res) => {
+    const { title, director, year } = req.body;
+    const newId = movies.length > 0 ? Math.max(...movies.map(m => m.id)) + 1 : 1;
+    const newMovie = { id: newId, title, director, year: parseInt(year) };
+    movies.push(newMovie);
+    res.status(201).json(newMovie);
 });
 
-app.post('/movies/:id/reviews', middlewareFilmeEncontrado, async (req, res) => {
-    try {
-        const { text, rating } = req.body;
-        const movieId = req.filme.id;
-        const [result] = await pool.query(
-            'INSERT INTO reviews (movieId, text, rating) VALUES (?, ?, ?)',
-            [movieId, text, rating]
-        );
-        const newReview = { id: result.insertId, movieId, text, rating };
-        res.status(201).json(newReview);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao criar a review.');
-    }
+app.post('/movies/:id/reviews', middlewareFilmeEncontrado, (req, res) => {
+    const { text, rating } = req.body;
+    const newId = reviews.length > 0 ? Math.max(...reviews.map(r => r.id)) + 1 : 1;
+    const newReview = { id: newId, movieId: req.filme.id, text, rating: parseInt(rating) };
+    reviews.push(newReview);
+    res.status(201).json(newReview);
 });
 
-// PUT ------------------
-
-app.put('/movies/:id', middlewareFilmeEncontrado, async (req, res) => {
-    try {
-        const { title, director, year } = req.body;
-        const { id } = req.params;
-        await pool.query(
-            'UPDATE movies SET title = ?, director = ?, year = ? WHERE id = ?',
-            [title, director, year, id]
-        );
-        const updatedMovie = { id: parseInt(id), title, director, year };
-        res.status(200).json(updatedMovie);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao atualizar o filme.');
-    }
+// PUT
+app.put('/movies/:id', middlewareFilmeEncontrado, (req, res) => {
+    const { title, director, year } = req.body;
+    const movieIndex = movies.findIndex(m => m.id == req.filme.id);
+    const updatedMovie = { ...movies[movieIndex], title, director, year: parseInt(year) };
+    movies[movieIndex] = updatedMovie;
+    res.status(200).json(updatedMovie);
 });
 
-app.put('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, async (req, res) => {
+app.put('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, (req, res) => {
     if (req.filme.id !== req.review.movieId) {
         return res.status(400).send("Essa review não pertence a este filme");
     }
-    try {
-        const { text, rating } = req.body;
-        const { reviewId } = req.params;
-        await pool.query(
-            'UPDATE reviews SET text = ?, rating = ? WHERE id = ?',
-            [text, rating, reviewId]
-        );
-        const updatedReview = { ...req.review, text, rating };
-        res.status(200).json(updatedReview);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao atualizar a review.');
-    }
+    const { text, rating } = req.body;
+    const reviewIndex = reviews.findIndex(r => r.id == req.review.id);
+    const updatedReview = { ...reviews[reviewIndex], text, rating: parseInt(rating) };
+    reviews[reviewIndex] = updatedReview;
+    res.status(200).json(updatedReview);
 });
 
-// DELETE --------------------
-
-app.delete('/movies/:id', middlewareFilmeEncontrado, async (req, res) => {
-    try {
-        const { id } = req.params;
-        await pool.query('DELETE FROM movies WHERE id = ?', [id]);
-        res.status(204).end();
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao deletar o filme.');
-    }
+// DELETE
+app.delete('/movies/:id', middlewareFilmeEncontrado, (req, res) => {
+    movies = movies.filter(m => m.id != req.filme.id);
+    // Also delete associated reviews
+    reviews = reviews.filter(r => r.movieId != req.filme.id);
+    res.status(204).end();
 });
 
-app.delete('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, async (req, res) => {
+app.delete('/movies/:id/reviews/:reviewId', middlewareFilmeEncontrado, middlewareReviewEncontrada, (req, res) => {
     if (req.filme.id !== req.review.movieId) {
         return res.status(400).send("Essa review não pertence a este filme");
     }
-    try {
-        const { reviewId } = req.params;
-        await pool.query('DELETE FROM reviews WHERE id = ?', [reviewId]);
-        res.status(204).end();
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro ao deletar a review.');
-    }
+    reviews = reviews.filter(r => r.id != req.review.id);
+    res.status(204).end();
 });
 
 app.listen(port, () => {

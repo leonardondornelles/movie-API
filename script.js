@@ -18,10 +18,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const directorInput = document.getElementById('director');
     const yearInput = document.getElementById('year');
 
-    // Função para gerar URL de imagem de placeholder
-    const getPosterUrl = (title) => {
-        // Usa um serviço de placeholder para criar uma imagem com o título do filme
-        return `https://placehold.co/300x450/141414/e50914?text=${encodeURIComponent(title)}`;
+    const TMDB_API_KEY = '8465b48c5bef30c62c8bf149e90ecc1a';
+    const TMDB_API_URL = 'https://api.themoviedb.org/3';
+
+    // Função para buscar a URL do pôster no TMDb
+    const getPosterUrl = async (title) => {
+        try {
+            const response = await fetch(`${TMDB_API_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`);
+            const data = await response.json();
+            if (data.results && data.results.length > 0 && data.results[0].poster_path) {
+                return `https://image.tmdb.org/t/p/w500${data.results[0].poster_path}`;
+            }
+        } catch (error) {
+            console.error('Error fetching poster from TMDb for title:', title, error);
+        }
+        // URL de fallback caso o pôster não seja encontrado
+        return `https://placehold.co/300x450/f8f9fa/6c757d?text=${encodeURIComponent(title.replace(' ', '+'))}`;
     };
 
     async function fetchAndDisplayMovies() {
@@ -29,25 +41,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_URL}/movies`);
             const movies = await response.json();
             
-            moviesGrid.innerHTML = ''; 
-            movies.forEach(movie => {
+            moviesGrid.innerHTML = ''; // Clear previous content
+
+            for (const movie of movies) {
+                const posterUrl = await getPosterUrl(movie.title); // Await the poster URL
+
                 const movieCard = document.createElement('div');
                 movieCard.classList.add('movie-card');
-                movieCard.dataset.id = movie.id; // Adiciona o ID ao card principal
+                movieCard.dataset.id = movie.id;
 
                 movieCard.innerHTML = `
-                    <img src="${getPosterUrl(movie.title)}" alt="Pôster de ${movie.title}">
+                    <img src="${posterUrl}" alt="Pôster de ${movie.title}">
                     <div class="movie-card-info">
-                        <h3>${movie.title}</h3>
-                        <p>${movie.year}</p>
-                        <div class="movie-actions">
-                            <button class="edit-btn" data-id="${movie.id}">Editar</button>
-                            <button class="delete-btn" data-id="${movie.id}">Excluir</button>
+                        <div>
+                            <h3>${movie.title}</h3>
+                            <p>${movie.year}</p>
                         </div>
+                    </div>
+                    <div class="movie-actions">
+                        <button class="edit-btn" data-id="${movie.id}">Editar</button>
+                        <button class="delete-btn" data-id="${movie.id}">Excluir</button>
                     </div>
                 `;
                 moviesGrid.appendChild(movieCard);
-            });
+            }
         } catch (error) {
             console.error('Erro ao buscar filmes:', error);
         }
@@ -61,26 +78,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const reviewsResponse = await fetch(`${API_URL}/movies/${movieId}/reviews`);
             const reviews = await reviewsResponse.json();
 
+            const posterUrl = await getPosterUrl(movie.title); // Await the poster URL
+
             movieDetailsContainer.innerHTML = `
-                <button id="back-to-list-btn">&larr; Voltar ao Catálogo</button>
-                <div class="details-poster">
-                    <img src="${getPosterUrl(movie.title)}" alt="Pôster de ${movie.title}">
-                </div>
-                <div class="details-info">
-                    <h2>${movie.title}</h2>
-                    <p><strong>Diretor:</strong> ${movie.director}</p>
-                    <p><strong>Ano:</strong> ${movie.year}</p>
-                    <div class="reviews-section">
-                        <h3>Reviews</h3>
-                        <button id="add-review-btn" data-id="${movie.id}">Adicionar Review</button>
-                        <div id="reviews-list">
-                            ${Array.isArray(reviews) && reviews.length > 0 ? reviews.map(review => `
-                                <div class="review-item">
-                                    <p><strong>Nota:</strong> ${'⭐'.repeat(review.rating)}</p>
-                                    <p>${review.text}</p>
-                                </div>
-                            `).join('') : '<p>Nenhuma review ainda.</p>'}
+                <button id="back-to-list-btn">&larr; Voltar à Lista</button>
+                <div class="details-header">
+                    <div class="details-poster">
+                        <img src="${posterUrl}" alt="Pôster de ${movie.title}">
+                    </div>
+                    <div class="details-info">
+                        <div>
+                            <h2>${movie.title}</h2>
+                            <p><strong>Diretor:</strong> ${movie.director}</p>
+                            <p><strong>Ano:</strong> ${movie.year}</p>
                         </div>
+                        <button id="add-review-btn" data-id="${movie.id}">Adicionar Review</button>
+                    </div>
+                </div>
+
+                <div class="reviews-section">
+                    <h3>Reviews</h3>
+                    <div id="reviews-list">
+                        ${Array.isArray(reviews) && reviews.length > 0 ? reviews.map(review => `
+                            <div class="review-item">
+                                <p><strong>Nota:</strong> ${'⭐'.repeat(review.rating)}</p>
+                                <p>${review.text}</p>
+                            </div>
+                        `).join('') : '<p>Nenhuma review ainda.</p>'}
                     </div>
                 </div>
             `;
